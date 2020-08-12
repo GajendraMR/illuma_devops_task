@@ -12,7 +12,7 @@ jobs:
             pip install --user -r requirements.txt
           name: Python Dependencies
       - run:
-          command: ./test_app.py test
+          command: python test_app.py
           name: Unit Test
 workflows:
   main:
