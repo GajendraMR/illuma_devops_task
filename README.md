@@ -9,9 +9,8 @@ File Structure:
   ├── Illuma\ Offline\ Interview\ -\ DevOps
   │   └── illuma_devops_offsite_task_urls.csv
   ├── README.md
-  ├── __pycache__
-  │   └── app.cpython-38.pyc
   ├── app.py
+  ├── config.py
   ├── docker-compose.yml
   ├── requirements.txt
   ├── static
@@ -28,6 +27,7 @@ File Structure:
 ### Pre-Requisite:
 1. Docker & Docker-Compose (Download & Install from [here](https://www.docker.com/products/docker-desktop))
 2. Browser to access - http://localhost:5000
+3. CircleCI - Only needed if to test CI process
 
 ### Steps to Run the application
 1. Clone the Project or download the zip file on to your local
