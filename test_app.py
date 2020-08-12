@@ -2,7 +2,6 @@ import app
 import unittest
 import flask
 
-
 class TestApp(unittest.TestCase):
 
     def setUp(self):
