@@ -1,3 +1,7 @@
+###############################
+####        Imports        ####
+###############################
+
 from flask import (Flask, render_template, abort, jsonify, request,
                    redirect, url_for)
 from werkzeug.utils import secure_filename
@@ -13,18 +17,21 @@ import time
 
 app = Flask(__name__)
 
-#initialize redis in-memory connection
-redis = StrictRedis(host='localhost', port=6379, db=0)
-#redis.flushall()
-requests_cache.install_cache(backend='redis', connection=StrictRedis(host='localhost', port=6379, db=0), expire_after=300)
+#initialize redis in-memory connection & installing cache for requests
+redis = StrictRedis(host='redis', port=6379, db=0)
+requests_cache.install_cache(backend='redis', connection=StrictRedis(host='redis', port=6379, db=0), expire_after=600)
+
+# Folder to save the uploaded txt/csv file
 UPLOAD_FOLDER = 'Illuma Offline Interview - DevOps/'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 ALLOWED_EXTENSIONS = set(['txt', 'csv'])
 
 def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+###############################
+####     Scrape by File    ####
+###############################
 @app.route("/", methods=["GET", "POST"])
 def welcome():
     if request.method == "POST":
@@ -35,7 +42,6 @@ def welcome():
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
         urls = [line.rstrip('\n') for line in open(os.path.join(app.config['UPLOAD_FOLDER'], filename))]
         # Removing first line of csv as it is having `url`
         if urls[0] == 'url':
@@ -50,7 +56,7 @@ def welcome():
             soup = BeautifulSoup(source, 'lxml')
             content = soup.get_text()
             formatted_content = re.sub(r'^(.{1000}).*$', '\g<1>', " ".join(re.split("\s+", re.sub("\n|\r", " ", content), flags=re.UNICODE)))
-            # switch on redis-server /usr/local/etc/redis.conf
+            #store the result on redis
             redis.set(url, formatted_content.encode('utf-8'), 3600)
             time.sleep(3)
 
@@ -63,7 +69,7 @@ def welcome():
             )
             response = requests.post('http://api.meaningcloud.com/lang-2.0', params=params)
             response_load = json.loads(response.text)
-            print(response_load)
+
             #Formatting the output from meaningcloud
             newDict={}
             for item in response_load['language_list']:
@@ -76,9 +82,11 @@ def welcome():
     else:
         return render_template("welcome.html")
 
+###############################
+####     Scrape by URL     ####
+###############################
 @app.route("/url-based", methods=["GET", "POST"])
 def scrape_by_url():
-    #initialize redis in-memory connection
     if request.method == "POST":
         url = request.form['text']
         #Start webscrapping using requests & bs4
@@ -87,7 +95,7 @@ def scrape_by_url():
         soup = BeautifulSoup(source, 'lxml')
         content = soup.get_text()
         formatted_content = re.sub(r'^(.{1000}).*$', '\g<1>', " ".join(re.split("\s+", re.sub("\n|\r", " ", content), flags=re.UNICODE)))
-        # switch on redis-server /usr/local/etc/redis.conf
+        #store the result on redis
         redis.set(url, formatted_content.encode('utf-8'), 3600)
         # An empty dictionary to store the final result
         urlResultDict={}
@@ -101,6 +109,7 @@ def scrape_by_url():
         )
         response = requests.post('http://api.meaningcloud.com/lang-2.0', params=params)
         response_load = json.loads(response.text)
+
         #Formatting the output from meaningcloud
         newDict={}
         for item in response_load['language_list']:
