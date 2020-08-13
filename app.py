@@ -4,6 +4,7 @@
 
 from flask import (Flask, render_template, abort, jsonify, request,
                    redirect, url_for)
+from requests.exceptions import ConnectionError
 from werkzeug.utils import secure_filename
 from bs4 import BeautifulSoup
 from redis import StrictRedis
@@ -35,7 +36,12 @@ def allowed_file(filename):
 ##################################
 def check_language(url, t):
     headers = {'User-Agent': 'wswp'}
-    source = requests.get(url, headers=headers).text
+    try:
+        source = requests.get(url, headers=headers, timeout=10).text
+    except requests.exceptions.ConnectionError:
+        return "!!Connection Refused!!"
+    except requests.exceptions.ReadTimeout:
+        return "!!Read Timed Out!!"
     soup = BeautifulSoup(source, 'lxml')
     content = soup.get_text()
     formatted_content = re.sub(r'^(.{1000}).*$', '\g<1>', " ".join(re.split("\s+", re.sub("\n|\r", " ", content), flags=re.UNICODE)))
@@ -53,7 +59,7 @@ def check_language(url, t):
     response_load = json.loads(response.text)
 
     #Formatting the output from meaningcloud
-    newDict={}
+    newDict = {}
     for item in response_load['language_list']:
         newDict.update(item)
     response_load['language_list']=newDict
@@ -64,7 +70,7 @@ def check_language(url, t):
 ###############################
 ####     Scrape by File    ####
 ###############################
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods = ["GET", "POST"])
 def welcome():
     if request.method == "POST":
         file = request.files['file']
@@ -79,10 +85,11 @@ def welcome():
         if urls[0] == 'url':
             urls.pop(0)
         # An empty dictionary to store the final result
-        resultDict={}
+        resultDict = {}
         for url in urls:
-            resultDict[url]=check_language(url,2)
-            print(resultDict)
+            #remove double quotes in a URL
+            url = re.sub('["]+', '', url)
+            resultDict[url] = check_language(url,2)
         return render_template("welcome.html", result=resultDict)
     else:
         return render_template("welcome.html")
@@ -95,11 +102,11 @@ def scrape_by_url():
     if request.method == "POST":
         url = request.form['text']
         # An empty dictionary to store the final result
-        urlResultDict={}
-        urlResultDict[url]=check_language(url, 0)
+        urlResultDict = {}
+        urlResultDict[url] = check_language(url, 0)
         return render_template("scrape_by_url.html", result=urlResultDict)
     else:
         return render_template("scrape_by_url.html")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host = "0.0.0.0")

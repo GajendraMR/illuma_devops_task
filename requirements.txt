@@ -16,4 +16,3 @@ requests-cache==0.5.2
 soupsieve==2.0.1
 urllib3==1.25.10
 Werkzeug==1.0.1
-pytest
